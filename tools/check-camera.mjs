@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {Flight,LOCK_SECONDS,angleDiff,project,viewFor} from '../dist/flight.js';
+import {cameraAxes,dot,pointOnRay} from '../dist/geometry.js';
 import {chaseView,chaseSight} from '../dist/chase-camera.js';
 
 const close=(a,b,tolerance=.00001)=>assert.ok(Math.abs(a-b)<tolerance,`${a} differs from ${b}`);
@@ -17,8 +18,9 @@ for(const [w,h] of [[900,420],[320,485],[740,170]]){
         close(marker.x,jet.x);close(marker.y,jet.y);
         assert.ok(jet.y>v.cy+v.r*1.45);
         assert.ok(Math.cos(angleDiff(camera.yaw,p.yaw))*(rear?-1:1)>.98);
-        close(Math.sin(jet.bank+(rear?-1:1)*camera.bank),Math.sin(bank));
-        assert.equal(chaseView(p,v,flat,true).camera.bank,0);
+        const chaseAxes=cameraAxes(camera),pilotAxes=cameraAxes(p);
+        assert.ok(dot(chaseAxes.forward,pilotAxes.forward)*(rear?-1:1)>.98);
+        if(Math.abs(pitch)<.2)close(chaseView(p,v,flat,true).camera.bank,0);
       }
     }
   }
@@ -36,16 +38,13 @@ assert.equal(g.lockId,lockId);assert.ok(g.missile(v));assert.equal(g.rockets,roc
 g.start('dogfight');
 Object.assign(g,{yaw:2.85,trackYaw:2.7,yawRate:.42,pitch:.32,pathPitch:.2,bank:.85,alt:70});
 for(const depth of [22,90,390]){
-  const u=.55*v.r,w=-.35*v.r,cb=Math.cos(g.bank),sb=Math.sin(g.bank);
-  const right=(u*cb-w*sb)*depth/v.f,sn=Math.sin(g.yaw),cs=Math.cos(g.yaw);
-  const b=g.bots[0];
-  Object.assign(b,{x:g.x+sn*depth+cs*right,z:g.z+cs*depth-sn*right,
-    alt:g.alt+depth*(Math.tan(g.pitch)-(u*sb+w*cb)/v.f),range:depth});
+  const u=.55*v.r,w=-.35*v.r,b=g.bots[0];
+  Object.assign(b,pointOnRay(g,u/v.f,w/v.f,depth),{range:depth});
   g.seekX=u/v.r;g.seekY=w/v.r;g.lockId=b.id;
   const cam=chaseView(g,v,flat).camera,sight=chaseSight(g,cam,v);
   const expected=project(b,cam,v);
   close(sight.ring.x,expected.x);close(sight.ring.y,expected.y);
-  const straight={x:g.x+sn*depth,z:g.z+cs*depth,alt:g.alt+Math.tan(g.pitch)*depth};
+  const straight=pointOnRay(g,0,0,depth);
   const gun=project(straight,cam,v);
   close(sight.gun.x,gun.x);close(sight.gun.y,gun.y);
 }

@@ -34,7 +34,7 @@
     <div class="viewport" id="viewport">
       <canvas id="world" tabindex="0" aria-label="Вид из кабины F/A-18E" aria-describedby="flight-help"></canvas>
       <img class="briefing-art" src="art/briefing.png" width="720" height="400" alt="" fetchpriority="high">
-      <span id="flight-help" class="sr-only">WASD — манёвр, Shift — разгон, X — тормоз. V переключает камеру. Удерживай C для обзора назад. Q — бочка. R — ракета, E — пулемёт, F — ловушки. При пожаре нажми O, чтобы выключить тягу, затем P для тушения. Дважды нажми W для запуска двигателя.</span>
+      <span id="flight-help" class="sr-only">WASD — манёвр, Shift — разгон, X — тормоз. V переключает камеру. Удерживай C для обзора назад. Удерживай W или S для петли. Стрелки влево и вправо вращают самолёт по крену. Q — бочка. R — ракета, E — пулемёт, F — ловушки. При пожаре нажми O, чтобы выключить тягу, затем P для тушения. Дважды нажми W для запуска двигателя.</span>
       <div id="scrim" class="scrim"></div>
       <div id="menu" class="menu">
         <div class="kicker"><span></span><span id="kicker">ЯНТАРНЫЙ ПРОЛИВ</span></div>
@@ -59,7 +59,7 @@
       <div class="view-label" id="rear-label" role="status" hidden><i></i> ОБЗОР НАЗАД</div>
       <div class="radar-alt" id="radar-alt" role="group" aria-label="Высота над землёй" hidden>
         <span class="alt-tape" aria-hidden="true"><i class="alt-floor"></i></span>
-        <div><small id="alt-caption">НАД ЗЕМЛЁЙ</small><span class="alt-value"><b id="alt-value">0</b><span id="alt-unit">м</span></span></div>
+        <div><small id="alt-caption">НАД ЗЕМЛЁЙ</small><span class="alt-value"><b id="alt-value">0</b><span id="alt-unit">м</span></span><small id="climb-rate" title="Вертикальная скорость">→ 0 м/с</small></div>
       </div>
       <div class="pull-up" id="ground-alert" role="status" hidden><b aria-hidden="true">!</b> <span id="ground-message"></span></div>
       <div class="engine-procedure" id="engine-procedure" hidden>
@@ -108,6 +108,7 @@
       <div class="binding"><button type="button" data-code="KeyX" aria-label="Воздушный тормоз">X</button><span>Тормоз</span></div>
       <div class="binding"><button type="button" data-code="KeyC" aria-label="Смотреть назад" title="Удерживать для обзора назад">C</button><span>Назад</span></div>
       <div class="binding"><button type="button" data-code="KeyQ" aria-label="Выполнить бочку" title="Q или двойное нажатие A / D">Q</button><span>Бочка</span></div>
+      <div class="binding roll-keys"><button type="button" data-code="ArrowLeft" aria-label="Крен влево" title="Удерживать для свободного вращения влево">←</button><button type="button" data-code="ArrowRight" aria-label="Крен вправо" title="Удерживать для свободного вращения вправо">→</button><span>Крен</span></div>
       <div class="binding engine-keys"><button type="button" data-code="KeyO" aria-label="Выключить тягу" title="Выключить тягу">O</button><button type="button" data-code="KeyP" aria-label="Потушить пожар" title="Потушить пожар после отключения тяги">P</button><span>Двигатель</span></div>
     </div>
     <div class="weapons">

@@ -246,3 +246,6 @@ h1{font:400 clamp(38px,min(5.5vw,8.7vh),102px)/1.05 Grid,var(--mono);letter-spac
   .at-home .home-hint{display:none}.at-home .home-dock{min-height:46px;justify-content:center}.home-options{gap:6px}
 }
 @media(max-height:580px){.shell.at-home{min-height:440px}.at-home .viewport .menu{max-height:96%}.at-home .menu h1{font-size:clamp(35px,6vw,55px)}.at-home .menu .kicker{margin-bottom:3px}.at-home .menu #brief{margin:5px 0 8px}.at-home .sortie>span{min-height:36px}.at-home .menu-actions{margin-top:8px}.at-home .home-dock{min-height:40px}}
+
+#climb-rate{font-weight:normal;letter-spacing:0;white-space:nowrap}
+@media(max-width:560px){.flight-keys{flex-wrap:wrap}.roll-keys>span{display:none}}

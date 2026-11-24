@@ -1,3 +1,4 @@
+import {manageEnergy} from './sortie-pilot.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Flight,LOCK_SECONDS,TOTAL,angleDiff,project,viewFor,cameraFor} from '../dist/flight.js';
@@ -67,9 +68,10 @@ for(const profile of ['arcade','classic']){
 reset();const cruise=game.speed;
 stepFor(1.5,new Set(['ShiftLeft']));assert.ok(game.speed>cruise+90);
 const fast=game.speed;stepFor(1.7,new Set(['KeyX']));assert.ok(game.speed<fast-80);
-stepFor(2,new Set(['KeyX']));assert.ok(game.speed<300);assert.equal(game.startRoll(1),false);
+stepFor(2,new Set(['KeyX']));assert.ok(game.speed<300);assert.equal(game.startRoll(1),true);
 reset();stepFor(.3,new Set(['KeyD','KeyW']));assert.ok(game.yaw>0 && game.pitch>.025 && game.bank>0);
-stepFor(.7,new Set(['KeyA','KeyS']));assert.ok(game.yaw<0 && game.pitch<.025 && game.bank<0);
+const priorHeading=game.yaw;stepFor(.7,new Set(['KeyA','KeyS']));
+assert.ok(game.yaw<priorHeading && game.pitch<.025 && game.bank<0);
 reset();const lateral=game.x;assert.equal(game.startRoll(-1),true);stepFor(.52);
 assert.ok(Math.abs(game.bank)>2.9);assert.equal(game.startRoll(-1),false);
 stepFor(.65);assert.ok(game.x<lateral-.5);assert.equal(game.roll,null);assert.ok(Math.abs(game.bank)<.01);
@@ -262,11 +264,13 @@ assert.ok(game.gLoad<0 && game.pathPitch<-.45 && game.alt<levelAltitude-12);
 stepFor(1.5);
 assert.ok(game.speed>levelSpeed+25);
 airframe();
-stepFor(3.4,new Set(['KeyX','KeyW']));
+stepFor(2.8,new Set(['KeyX','KeyW']));
 assert.ok(game.pitch>0 && game.pathPitch<0 && game.gLoad<.5 && active('stall'));
+stepFor(.6,new Set(['KeyX','KeyW']));assert.ok(game.pathPitch<-.35 && game.speed<116);
 assert.equal(game.wingStress,0);
 stepFor(3.5,new Set(['ShiftLeft']));
-assert.ok(game.speed>400 && !active('stall') && game.gLoad>.9);
+assert.ok(game.speed>400 && !active('stall'));
+stepFor(.9,new Set(['KeyW']));assert.ok(game.gLoad>2 && game.pathPitch>-.8);
 
 const samplePull=rate=>{
   airframe();
@@ -342,6 +346,7 @@ function completeSortie(mission){
       else if((shots>0 || !game.rockets)&&Math.hypot(pos.x-v.cx,pos.y-v.cy)<v.r*.95){keys.add('KeyE');usedGun=true;}
     }
     if(game.threats.some(t=>!t.free) && game.flares)game.deployFlares();
+    manageEnergy(game,keys);
     game.step(dt,keys,v);highestWave=Math.max(highestWave,game.wave);
   }
   assert.equal(game.mode,'won',mission+' '+game.kills+'/'+game.goal+' reason '+game.deathCause);

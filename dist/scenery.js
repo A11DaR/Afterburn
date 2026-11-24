@@ -1,3 +1,4 @@
+import {SteepTerrain} from './steep-terrain.js';
 import {angleDiff,clamp} from './geometry.js';
 import {surfacePaint,weatherField,WEATHER_SHIFT,WEATHER_MASK,windX,windZ} from './coastal-art.js';
 
@@ -56,7 +57,7 @@ export class Scenery {
     this.wc=this.world.getContext('2d',{alpha:false,willReadFrequently:true});
     this.paintMap=surfacePaint(art.terrain,art.ripple);
     this.weather=weatherField();this.shadedFog=shadowPalette(art.fog);
-    this.lastPaint=-Infinity;
+    this.lastPaint=-Infinity;this.steep=new SteepTerrain(this);
     this.samples=[];
     for(let z=1.8;z<1480;z+=.80+z*.0158) this.samples.push({z,fog:Math.round((1-Math.exp(-z*.00155))*31)});
   }
@@ -147,10 +148,22 @@ export class Scenery {
     if(this.cloudLayer)this.cloudLayer(c,{...cam,bank:0},{...v,w,h,cx,cy,occluders:this.occluders},clock);
   }
   draw(c,cam,v,clock) {
+    const blend=clamp((Math.abs(cam.pitch)-.27)/.18,0,1);
+    if(blend>=1){
+      this.steep.draw(c,cam,v,clock);
+      if(this.cloudLayer)this.cloudLayer(c,cam,v,clock);
+      return;
+    }
     if(clock-this.lastPaint>=1/35 || clock<this.lastPaint || Math.abs(angleDiff(cam.yaw,this.lastYaw??cam.yaw))>.26) {
       this.paint(cam,v,clock);this.lastPaint=clock;this.lastYaw=cam.yaw;
     }
     c.save();c.translate(Math.round(v.cx),Math.round(v.cy));c.rotate(-cam.bank);
     c.drawImage(this.world,Math.round(-v.cx-this.padX),Math.round(-v.cy-this.padY));c.restore();
+    if(blend>0){
+      c.save();c.globalAlpha=blend*blend*(3-2*blend);
+      this.steep.draw(c,cam,v,clock);
+      if(this.cloudLayer)this.cloudLayer(c,cam,v,clock);
+      c.restore();
+    }
   }
 }

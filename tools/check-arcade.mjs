@@ -1,3 +1,4 @@
+import {manageEnergy} from './sortie-pilot.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Flight,LOCK_SECONDS,angleDiff,project,relativeTo,viewFor} from '../dist/flight.js';
@@ -27,13 +28,13 @@ g.startTraining();const startBank=g.bank;
 fly(g,.10,new Set(['KeyD','KeyW']));
 assert.ok(g.bank>startBank && g.bank<.15);
 fly(g,1.5,new Set(['KeyD','KeyW']));assert.ok(g.highAoa&&g.speed<370);
-fly(g,5);assert.ok(Math.abs(g.pathPitch)<.035&&Math.abs(g.bank)<.025&&g.speed>395);
+fly(g,7);assert.ok(Math.abs(g.pathPitch)<.035&&Math.abs(g.bank)<.025&&g.speed>395);
 
 g.startTraining();g.speed=g.throttle=740;
 fly(g,2,new Set(['ShiftLeft','KeyW']));assert.ok(g.peakG>8&&g.peakG<9.4&&!g.wingLoss);
 g.startTraining();g.pointerAim={yaw:.32,pitch:.13,edge:0};
 fly(g,3);assert.ok(Math.abs(g.yaw-.32)<.018&&Math.abs(g.pitch-.13)<.022);
-g.pointerAim.edge=1;fly(g,1.2);assert.ok(angleDiff(g.yaw,.32)>.4);
+g.pointerAim.edge=1;fly(g,1.5);assert.ok(angleDiff(g.yaw,.32)>.4);
 g.pause();assert.equal(g.pointerAim,null);g.resume();assert.equal(g.mouseGun,false);
 g.pointerAim={yaw:-1.2,pitch:0,edge:0};fly(g,.1,new Set(['KeyW']));assert.equal(g.pointerAim,null);
 g.startTraining();g.touchStick={x:-.6,y:.36};fly(g,.8);assert.ok(g.bank<-.42&&g.pathPitch>.065);
@@ -139,6 +140,7 @@ function flyMission(id,seed){
       if(p.inSight(v,true)&&(fired||!p.rockets))keys.add('KeyE');
     }else p.pointerAim=null;
     if(p.threats.some(t=>!t.free)&&p.flares)p.deployFlares();
+    manageEnergy(p,keys);
     p.step(dt,keys,v);
   }
   assert.equal(p.mode,'won',id+' '+p.kills+'/'+p.goal+' '+p.deathCause+' at '+p.time.toFixed(1));

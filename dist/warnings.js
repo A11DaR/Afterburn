@@ -58,7 +58,7 @@ export const WARNINGS = [
 
 export const WARNING_UI = {
   ru: { normal:'В норме',test:'Нажми на сигнал',testLabel:'Проверить',on:'сработало',off:'погашено',
-    terrain:'РЕЛЬЕФ · ТЯНИ ВВЕРХ!', altTitle:'Высота над землёй',altLabel:'НАД ЗЕМЛЁЙ',metres:'м',
+    terrain:'РЕЛЬЕФ · ТЯНИ ВВЕРХ!', altTitle:'Высота над землёй',altLabel:'НАД ЗЕМЛЁЙ',metres:'м',rateUnit:'м/с',rateTitle:'Вертикальная скорость',
     engineReady:'Двигатель запущен',fireOut:'Пожар потушен',cutFirst:'Сначала выключи тягу · O',
     engine:{
       fire:{title:'ПОЖАР ДВИГАТЕЛЯ',key:'O',action:'Выключить тягу'},
@@ -68,7 +68,7 @@ export const WARNING_UI = {
     front:'РАКЕТА ВПЕРЕДИ',back:'РАКЕТА СЗАДИ',flares:'F · ловушки',ready:'Готовь манёвр',roll:'Q · бочка сейчас',turn:'Резкий вираж',seconds:'с',
     wing:'ПОТЕРЯ КРЫЛА', damage:'Попадание · Корпус',leftWing:'Левое крыло оторвано',rightWing:'Правое крыло оторвано' },
   en: { normal:'All clear',test:'Press a light to test',testLabel:'Test',on:'active',off:'off',
-    terrain:'TERRAIN · PULL UP',altTitle:'Height above ground',altLabel:'ABOVE GROUND',metres:'m',
+    terrain:'TERRAIN · PULL UP',altTitle:'Height above ground',altLabel:'ABOVE GROUND',metres:'m',rateUnit:'m/s',rateTitle:'Vertical speed',
     engineReady:'Engine running',fireOut:'Fire extinguished',cutFirst:'Cut thrust first · O',
     engine:{
       fire:{title:'ENGINE FIRE',key:'O',action:'Cut thrust'},

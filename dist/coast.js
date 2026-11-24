@@ -1,4 +1,4 @@
-import {clamp} from './geometry.js';
+import {clamp,cameraAxes} from './geometry.js';
 import {cloudSprites,groundSprites,random32,CLOUD_CELL,WEATHER_PERIOD,WEATHER_SHIFT,WEATHER_MASK,windX,windZ} from './coastal-art.js';
 
 const period=1024;
@@ -6,12 +6,13 @@ const wrap=(x,size)=>x-Math.round(x/size)*size;
 const smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
 
 function axes(cam){
-  return {sn:Math.sin(cam.yaw),cs:Math.cos(cam.yaw),rollX:Math.cos(cam.bank),rollY:Math.sin(cam.bank),incline:Math.tan(cam.pitch)};
+  return {sn:Math.sin(cam.yaw),cs:Math.cos(cam.yaw),rollY:Math.sin(cam.bank),...cameraAxes(cam)};
 }
+function depthAt(view,dx,dy,dz){return dx*view.forward.x+dy*view.forward.y+dz*view.forward.z;}
 function projected(cam,v,view,x,z,alt,depth){
-  const u=((x-cam.x)*view.cs-(z-cam.z)*view.sn)*v.f/depth;
-  const y=(view.incline+(cam.alt-alt)/depth)*v.f;
-  return {x:v.cx+u*view.rollX+y*view.rollY,y:v.cy-u*view.rollY+y*view.rollX};
+  const dx=x-cam.x,dy=alt-cam.alt,dz=z-cam.z,scale=v.f/depth;
+  return {x:v.cx+(dx*view.right.x+dy*view.right.y+dz*view.right.z)*scale,
+    y:v.cy-(dx*view.up.x+dy*view.up.y+dz*view.up.z)*scale};
 }
 
 function nearField(range){return {range,bins:Array.from({length:256},()=>[])};}
@@ -78,14 +79,15 @@ export class Coast {
     const view=axes(cam),draw=[],driftX=clock*windX,driftZ=clock*windZ;
     for(const bank of this.scenery.weather.banks){
       const dx=wrap(bank.x+driftX-cam.x,WEATHER_PERIOD),dz=wrap(bank.z+driftZ-cam.z,WEATHER_PERIOD);
-      const forward=dx*view.sn+dz*view.cs,side=dx*view.cs-dz*view.sn;
+      const forward=depthAt(view,dx,180-cam.alt,dz);
       const distance=Math.hypot(dx,dz);
-      if(forward<-bank.span*.47||distance>1120||Math.abs(side)>Math.max(0,forward)*v.w/(2*v.f)+bank.span*.61)continue;
+      if(forward<-bank.span*.47||distance>1120)continue;
       const puffs=[];let x0=v.w,x1=0,y0=v.h,y1=0;
       for(const l of bank.lobes){
         const x=cam.x+dx+(l.x-bank.x),z=cam.z+dz+(l.z-bank.z);
-        const depth=(x-cam.x)*view.sn+(z-cam.z)*view.cs;
+        const depth=depthAt(view,x-cam.x,l.y-cam.alt,z-cam.z);
         if(depth<Math.max(10,l.rx*.28))continue;
+        if(!v.occluders&&!this.visible(cam,{x,z,alt:l.y},l.ry*.5,Math.hypot(x-cam.x,z-cam.z)))continue;
         const p=projected(cam,v,view,x,z,l.y,depth),scale=v.f/depth;
         const rightRadius=Math.hypot(view.cs*l.rx,view.sn*l.rz),alongRadius=Math.hypot(view.sn*l.rx,view.cs*l.rz);
         const slope=(cam.alt-l.y)/depth;
@@ -105,9 +107,10 @@ export class Coast {
         const haze=(1-.49*smooth(180,950,b.distance))*(1-smooth(900,1120,b.distance));
         for(const p of b.puffs){
           const row=clamp(Math.round(Math.atan(p.slope)/.42)+1,0,3);
-          c.globalAlpha=haze*(.18+.80*smooth(18,83,p.depth));
+          c.save();c.globalAlpha*=haze*(.18+.80*smooth(18,83,p.depth));
+          c.translate(p.left+p.w/2,p.top+p.h/2);c.rotate(-cam.bank);
           c.drawImage(this.cloudArt,p.shape*CLOUD_CELL,row*CLOUD_CELL,CLOUD_CELL,CLOUD_CELL,
-            Math.round(p.left),Math.round(p.top),Math.max(1,Math.round(p.w)),Math.max(1,Math.round(p.h)));
+            Math.round(-p.w/2),Math.round(-p.h/2),Math.max(1,Math.round(p.w)),Math.max(1,Math.round(p.h)));c.restore();
         }
       }
       c.restore();
@@ -130,11 +133,10 @@ export class Coast {
   surface(c,cam,v,clock){
     const draw=[],view=axes(cam);
     const add=(prop,x,z,range)=>{
-      const dx=x-cam.x,dz=z-cam.z,depth=dx*view.sn+dz*view.cs;
+      const dx=x-cam.x,dz=z-cam.z,sea=prop.kind===9,alt=prop.alt+(sea ? .24 : .1);
+      const depth=depthAt(view,dx,alt-cam.alt,dz);
       if(depth<2.8||depth>range||dx*dx+dz*dz>range*range)return;
-      const side=dx*view.cs-dz*view.sn;
-      if(Math.abs(side)>depth*(v.w+Math.abs(view.rollY)*v.h)/(2*v.f)+prop.size*1.6)return;
-      const sea=prop.kind===9,alt=prop.alt+(sea?.24:.1),scale=v.f/depth;
+      const scale=v.f/depth;
       const size=prop.size*scale;if(size<(sea?4:2))return;
       const p=projected(cam,v,view,x,z,alt,depth);
       if(p.x<-size||p.x>v.w+size||p.y<-size||p.y>v.h+size*1.35)return;
@@ -190,7 +192,7 @@ export class Coast {
     const at=(t,offset)=>{
       const bow=prop.size*(.11*t*t+.04*t)+offset+sway;
       const xx=x+t*half*sx-bow*sz,zz=z+t*half*sz+bow*sx;
-      const depth=(xx-cam.x)*view.sn+(zz-cam.z)*view.cs;
+      const depth=depthAt(view,xx-cam.x,.32-cam.alt,zz-cam.z);
       return depth>1.5?projected(cam,v,view,xx,zz,.32,depth):null;
     };
     const ribbon=(lo,hi,offset,thickness)=>{
@@ -209,7 +211,7 @@ export class Coast {
       c.beginPath();let points=0;
       for(const [aft,spread] of [[3,.9],[9,2.2],[15,3.6],[22,5.4]]){
         const xx=x-fx*aft+fz*spread*side,zz=z-fz*aft-fx*spread*side;
-        const d=(xx-cam.x)*view.sn+(zz-cam.z)*view.cs;if(d<2)continue;
+        const d=depthAt(view,xx-cam.x,.16-cam.alt,zz-cam.z);if(d<2)continue;
         const p=projected(cam,v,view,xx,zz,.16,d);
         if(points++)c.lineTo(p.x,p.y);else c.moveTo(p.x,p.y);
       }

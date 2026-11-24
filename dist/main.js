@@ -28,7 +28,7 @@ function profileState(){
   const arcade=game.profile==='arcade';
   for(const input of profiles)input.checked=input.value===game.profile;
   ui.shell.classList.toggle('arcade',arcade);
-  const hint=arcade?(coarse.matches?'Веди пальцем по левой части экрана. Отпусти, чтобы выровняться.':'Мышь или WASD — курс. ЛКМ — пулемёт, ПКМ — ракета.'):'WASD · тяга вручную · Q или дважды A/D — бочка.';
+  const hint=arcade?(coarse.matches?'Веди пальцем по левой части экрана. Отпусти, чтобы выровняться.':'Мышь или WASD — курс. W / S — петля, ← / → — свободный крен. ЛКМ / ПКМ — огонь.'):'W / S — петля, A / D — вираж, ← / → — свободный крен. Q — бочка.';
   setText(el('profile-help'),hint);
   setText(el('home-hint'),arcade?(coarse.matches?'Веди самолёт пальцем':'Мышь или WASD · пилотирование'):'WASD · пилотирование');
   keyButtons.get('KeyQ').title=arcade?'Бочка по Q':'Q или двойное нажатие A / D';
@@ -181,7 +181,7 @@ function refreshReadouts(){
     setText(el('lesson-action'),actions[lesson.stage]);
   }
   setText(el('g-load'),game.gLoad.toFixed(1).replace('.',','));setText(el('aoa'),'α '+Math.round(game.aoa)+'°');
-  const telemetry=el('flight-load');telemetry.classList.toggle('caution',game.highG);telemetry.classList.toggle('over',game.gLoad>WING_LIMIT||Boolean(game.wingLoss));
+  const telemetry=el('flight-load');telemetry.classList.toggle('caution',game.highG);telemetry.classList.toggle('over',Math.abs(game.gLoad)>WING_LIMIT||Boolean(game.wingLoss));
   telemetry.style.setProperty('--strain',Math.round(game.wingStress*100)+'%');
   setText(ui.hull,game.hull);setText(ui.missiles,pad(game.rockets));setText(ui.flares,pad(game.flares));
   setText(ui.ammo,game.reload>0?'···':pad(game.rounds));
@@ -200,6 +200,9 @@ function refreshReadouts(){
     const metres=Math.round(Math.max(0,game.clearance)*METRES_PER_UNIT);
     altitude.lang=lang;altitude.setAttribute('aria-label',words.altTitle);altitude.title=words.altTitle;
     setText(el('alt-caption'),words.altLabel);setText(el('alt-value'),metres);setText(el('alt-unit'),words.metres);
+    const climb=Math.round(game.speed/9*Math.sin(game.pathPitch)*METRES_PER_UNIT),rate=el('climb-rate');
+    setText(rate,(climb>0?'↑':climb<0?'↓':'→')+' '+Math.abs(climb)+' '+words.rateUnit);
+    rate.title=words.rateTitle;
     altitude.style.setProperty('--tape-shift',(metres*.6%12).toFixed(1)+'px');
     altitude.style.setProperty('--floor-offset',Math.min(60,metres*.6).toFixed(1)+'px');
     altitude.classList.toggle('caution',game.lowAltitude);altitude.classList.toggle('danger',game.groundWarning);
@@ -217,7 +220,7 @@ function refreshReadouts(){
     const bearing=Math.atan2(threat.x-game.x,threat.z-game.z);
     ui.threat.lang=lang;
     setText(ui['threat-bearing'],Math.cos(bearing-game.yaw)<0?words.back:words.front);
-    const canRoll=game.rollCooldown<=0 && game.speed>=300;
+    const canRoll=!game.roll;
     const maneuver=turnLabel?turnLabel[lang].action:threat.ttl>2.25?words.ready:canRoll?words.roll:words.turn;
     ui.threat.classList.toggle('close',threat.ttl<=2.25);
     setText(ui['threat-action'],game.flares?words.flares+' · '+maneuver:maneuver);
@@ -340,6 +343,7 @@ function release(code){
 }
 window.addEventListener('keydown',event=>{
   if(event.ctrlKey||event.altKey||event.metaKey)return;
+  if(game.mode!=='live'&&event.code.startsWith('Arrow'))return;
   if(event.code==='KeyV'){
     event.preventDefault();if(!event.repeat)switchCamera();return;
   }
@@ -349,7 +353,7 @@ window.addEventListener('keydown',event=>{
   if(!keycap(event.code))return;
   event.preventDefault();if(!event.repeat)press(event.code);
 });
-window.addEventListener('keyup',e=>{if(keycap(e.code)){e.preventDefault();release(e.code);}});
+window.addEventListener('keyup',e=>{if(keycap(e.code)){if(game.mode==='live')e.preventDefault();release(e.code);}});
 for(const [code,b] of keyButtons){
   b.addEventListener('pointerdown',e=>{
     if(e.button!==0)return;e.preventDefault();b.setPointerCapture(e.pointerId);press(code);

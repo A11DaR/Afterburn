@@ -1,4 +1,4 @@
-import {angleDiff,clamp,project} from './geometry.js';
+import {angleDiff,clamp,project,axesFor,anglesFor,pointOnRay,TAU} from './geometry.js';
 
 // Retract the camera along its boom when a ridge crosses the line to the jet.
 function clearBoom(plane,dx,dy,dz,length,heightAt){
@@ -17,37 +17,61 @@ function clearBoom(plane,dx,dy,dz,length,heightAt){
   return 1;
 }
 
+const chaseHistory=new WeakMap();
+function followBank(plane,heading,pitch,full,stable,blend,rear,reduced){
+  const arc=angleDiff(full,stable),target=stable+arc*blend;
+  if(!Number.isFinite(plane.time))return target;
+  let views=chaseHistory.get(plane);
+  if(!views){views=[];chaseHistory.set(plane,views);}
+  const index=Number(rear)+2*Number(reduced),last=views[index],dt=last?plane.time-last.time:Infinity;
+  let bank=target;
+  if(last&&dt>=0&&dt<.5){
+    const forward=axesFor(heading,pitch).forward;
+    const previous=anglesFor(forward,last.right,heading).bank;
+    let change=angleDiff(target,previous);
+    // Both ways around the roll circle describe the same aircraft attitude.
+    // Follow the nearby camera solution when a roll crosses +180 / -180.
+    for(const winding of [-1,1]){
+      const alternative=angleDiff(target+winding*TAU*blend,previous);
+      if(Math.abs(alternative)<Math.abs(change))change=alternative;
+    }
+    bank=previous+clamp(change,-dt*4,dt*4);
+  }
+  views[index]={time:plane.time,right:axesFor(heading,pitch,bank).right};
+  return bank;
+}
+
 export function chaseView(plane,v,heightAt,reduced=false){
   const rear=Boolean(plane.rear),dir=rear?-1:1;
-  const turnLag=reduced?0:clamp((plane.yawRate??0)*.075+angleDiff(plane.yaw,plane.trackYaw??plane.yaw)*.15,-.095,.095);
-  const yaw=angleDiff(plane.yaw-turnLag+(rear?Math.PI:0),0);
-  const slope=Math.tan(plane.pitch),pathSlope=Math.tan(plane.pathPitch??plane.pitch);
-  const incline=dir*(slope-(reduced?0:clamp(slope-pathSlope,-.5,.5)*.16))-.035;
-  const pitch=Math.atan(incline),bank=reduced?0:dir*.18*Math.sin(plane.bank);
+  const horizontal=Math.cos(plane.pitch);
+  const turnLag=reduced?0:clamp((plane.yawRate??0)*.075+angleDiff(plane.yaw,plane.trackYaw??plane.yaw)*.15,-.095,.095)*horizontal;
+  const heading=angleDiff(plane.yaw-turnLag+(rear?Math.PI:0),0),fullBank=dir*plane.bank;
+  // The horizon is an unreliable roll reference straight up or down. Hand the
+  // camera over to the wings before crossing either pole, including in rear view.
+  let blend=clamp((.83-horizontal)/.41,0,1);blend=blend*blend*(3-2*blend);
+  const stableBank=reduced?0:dir*.18*Math.sin(plane.bank);
+  const cameraBank=followBank(plane,heading,dir*plane.pitch,fullBank,stableBank,blend,rear,reduced);
+  const base=axesFor(heading,dir*plane.pitch,cameraBank);
+  const lag=reduced?0:clamp(plane.pitch-(plane.pathPitch??plane.pitch),-.5,.5)*.13*horizontal;
+  const tilt=.035+lag*dir*Math.cos(cameraBank),ct=Math.cos(tilt),st=Math.sin(tilt);
+  const forward={x:base.forward.x*ct-base.up.x*st,y:base.forward.y*ct-base.up.y*st,z:base.forward.z*ct-base.up.z*st};
+  const up={x:base.up.x*ct+base.forward.x*st,y:base.up.y*ct+base.forward.y*st,z:base.up.z*ct+base.forward.z*st};
+  const attitude=anglesFor(forward,base.right,heading);
   const speed=plane.speed??398,extension=reduced?0:clamp((speed-398)/330,0,1);
-  const boom=27+extension*3,forward=boom*Math.cos(pitch);
-  const anchorY=v.h*.758,drop=(anchorY-v.cy)/v.f;
-  const lateral=-Math.sin(bank)*drop,vertical=Math.cos(bank)*drop;
-  const sn=Math.sin(yaw),cs=Math.cos(yaw);
-  const dx=-forward*(sn+lateral*cs),dz=-forward*(cs-lateral*sn),dy=forward*(vertical-incline);
+  const boom=27+extension*3,anchorY=v.h*.758,drop=(anchorY-v.cy)/v.f;
+  const dx=boom*(-forward.x+drop*up.x),dy=boom*(-forward.y+drop*up.y),dz=boom*(-forward.z+drop*up.z);
   const fraction=clearBoom(plane,dx,dy,dz,boom,heightAt);
-  const camera={x:plane.x+dx*fraction,z:plane.z+dz*fraction,alt:plane.alt+dy*fraction,yaw,pitch,bank};
+  const camera={x:plane.x+dx*fraction,z:plane.z+dz*fraction,alt:plane.alt+dy*fraction,...attitude};
   const span=clamp(Math.min(v.w*.27,v.h*.49),Math.min(100,v.w*.33,v.h*.45),202)*(27/boom);
-  return {camera,jet:{x:v.cx,y:anchorY,span,bank:angleDiff(plane.bank,dir*bank),
-    attitude:plane.pitch-dir*pitch,slip:turnLag,rear}};
+  return {camera,jet:{x:v.cx,y:anchorY,span,bank:angleDiff(plane.bank,dir*cameraBank),
+    attitude:dir*tilt,slip:turnLag,rear}};
 }
 
 // The hit tests use the pilot's sight. Reproject that same sight at the current
 // contact's depth so nearby targets and the gun pipper agree in the offset view.
 export function chaseSight(plane,cam,v){
-  const sn=Math.sin(plane.yaw),cs=Math.cos(plane.yaw);
-  const cb=Math.cos(plane.bank),sb=Math.sin(plane.bank),slope=Math.tan(plane.pitch);
-  const depthOf=target=>target?Math.max(.5,(target.x-plane.x)*sn+(target.z-plane.z)*cs):210;
-  const at=(u,w,depth)=>{
-    const right=(u*cb-w*sb)*depth/v.f,up=(u*sb+w*cb)/v.f;
-    return project({x:plane.x+sn*depth+cs*right,z:plane.z+cs*depth-sn*right,
-      alt:plane.alt+(slope-up)*depth},cam,v);
-  };
+  const depthOf=target=>target?Math.max(.5,project(target,plane,v).depth):210;
+  const at=(u,w,depth)=>project(pointOnRay(plane,u/v.f,w/v.f,depth),cam,v);
   const followed=plane.bots.find(b=>b.id===plane.lockId);
   const gunTarget=plane.inSight(v,true);
   const depth=depthOf(followed??gunTarget);

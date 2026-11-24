@@ -48,11 +48,11 @@ export class Flight {
       lesson:null,roundsFired:0,gunHits:0,launches:0,missileHits:0,
       wave:0,kills:0,hull:100,rockets:this.mission.rockets,rounds:240,flares:this.mission.flares,time:0,waveTime:0,
       x:550,z:95,alt:this.missionId==='dogfight'?112:55,yaw:0,pitch:.025,bank:0,baseBank:0,yawRate:0,
-      pathPitch:.025,trackYaw:0,slip:0,thrust:17.65,gLoad:1,peakG:1,stalled:false,highG:false,wingStress:0,wingLoss:null,exit:null,
+      pathPitch:.025,trackYaw:0,slip:0,separation:0,aileronRate:0,freeBank:false,thrust:17.65,gLoad:1,peakG:1,stalled:false,highG:false,wingStress:0,wingLoss:null,exit:null,
       speed:398,throttle:398,boost:false,braking:false,flapAngle:0,flapsExtended:false,
       lastHitSide:0,clearance:55,groundWarning:false,warningIn:0,
       lowAltitude:false,bankWarning:false,terrainTurn:0,leftMargin:Infinity,rightMargin:Infinity,
-      rear:false,lastSide:1,roll:null,rollCooldown:0,deathCause:'',lock:0,lockId:null,seekX:0,seekY:0,
+      rear:false,lastSide:1,roll:null,deathCause:'',lock:0,lockId:null,seekX:0,seekY:0,
       aoa:3.4,highAoa:false,lowSpeed:false,overspeed:false,sinkWarning:false,
       engineState:'running',engineClock:0,restartTapAt:-Infinity,
       sixWarning:false,rearPressure:0,
@@ -117,9 +117,7 @@ export class Flight {
   }
   startRoll(side=this.lastSide) {
     if(this.mode!=='live' || this.wingLoss || this.roll)return false;
-    if(this.rollCooldown>0){this.emit('info','Бочка будет готова через '+Math.ceil(this.rollCooldown)+' с');return false;}
-    if(this.speed<300){this.emit('info','Для бочки набери 300 узлов · Shift');return false;}
-    this.lastSide=side<0?-1:1;this.roll={side:this.lastSide,t:0};this.rollCooldown=3.65;
+    this.lastSide=side<0?-1:1;this.roll={side:this.lastSide,t:0,entryBank:this.baseBank};
     this.emit('roll',this.lastSide);return true;
   }
   igniteEngine(){
@@ -163,7 +161,8 @@ export class Flight {
   }
   movePlayer(dt,keys){
     let side=leftRight(keys),vertical=Number(keys.has('KeyW'))-Number(keys.has('KeyS'));
-    if(side||vertical)this.pointerAim=null;
+    const aileron=Number(keys.has('ArrowRight'))-Number(keys.has('ArrowLeft'));
+    if(side||vertical||aileron)this.pointerAim=null;
     if(this.profile==='arcade')({side,vertical}=arcadeAxes(this,dt,side,vertical));
     if(Math.abs(side)>.04)this.lastSide=Math.sign(side);
     this.rear=keys.has('KeyC');
@@ -172,11 +171,11 @@ export class Flight {
     this.braking=keys.has('KeyX');
     if(this.boost&&!wasBoosting)this.emit('boost');
     if(this.braking&&!wasBraking)this.emit('brake');
-    this.rollCooldown=Math.max(0,this.rollCooldown-dt);
-    advanceAirframe(this,dt,side,vertical);
+    if(keys.has('KeyQ')&&!aileron&&!this.roll)this.startRoll();
+    advanceAirframe(this,dt,side,vertical,aileron);
     if(!this.flapsExtended&&this.flapAngle>=8){this.flapsExtended=true;this.emit('flapDown');}
     if(this.flapsExtended&&this.flapAngle<=3){this.flapsExtended=false;this.emit('flapUp');}
-    if(this.gLoad>WING_LIMIT && this.wingStress>=1){
+    if(Math.abs(this.gLoad)>WING_LIMIT && this.wingStress>=1){
       this.wingLoss={side:this.lastSide,age:0,load:this.gLoad};this.roll=null;this.rear=false;
       this.boost=false;this.braking=false;this.threats=[];this.resetLock();this.damageFlash=.52;
       this.emit('wingBreak',this.wingLoss);return;
