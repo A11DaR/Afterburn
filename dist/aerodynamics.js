@@ -4,6 +4,12 @@ import {TAU,clamp,approach,angleDiff,axesFor,anglesFor,cross,unit} from './geome
 const GRAVITY=55, RAD=Math.PI/180, LIFT_SLOPE=.30, INCIDENCE=3.4;
 export const WING_LIMIT=10;
 
+export function nextVisionShade(previous,gLoad,dt){
+  const target=clamp((gLoad-6)/4,0,1);
+  const shade=approach(previous,target,target>previous?4.8:2.2,dt);
+  return target===0&&shade<.001?0:shade;
+}
+
 function rollControls(p,dt,side,aileron,control){
   let rollPull=0,delta=0;
   if(aileron){p.freeBank=true;p.roll=null;}
@@ -71,6 +77,7 @@ export function advanceAirframe(p,dt,side,elevator,aileron=0){
   const attached=Math.min(angle,18)+Math.min(4,Math.max(0,angle-18))*.18;
   const lift=Math.sign(p.aoa)*(attached*(1-p.separation)+2.1*p.separation);
   p.gLoad=q*LIFT_SLOPE*lift;
+  p.visionShade=nextVisionShade(p.visionShade,p.gLoad,dt);
   const load=Math.abs(p.gLoad);
   p.peakG=Math.max(p.peakG,load);p.highG=load>(p.highG?7.7:8.5);
   p.wingStress=clamp(p.wingStress+dt*(load>WING_LIMIT ? .32+.84*(load-WING_LIMIT) : -.53),0,1);

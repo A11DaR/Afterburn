@@ -29,6 +29,21 @@ function brackets(c,x,y,half,col,arm=5) {
     path(c,[[x+sx*(half-arm),y+sy*half],[x+sx*half,y+sy*half],[x+sx*half,y+sy*(half-arm)]],col);
   }
 }
+export function drawLoadShade(c,v,strength){
+  if(strength<=0)return;
+  const core=.60*strength**3,edge=.98*strength;
+  const clearRadius=.55-.44*strength;
+  const ink=alpha=>'rgba(2,3,5,'+alpha+')';
+  c.save();
+  c.translate(v.cx,v.cy);c.scale(v.w*.5,v.h*.47);
+  const shade=c.createRadialGradient(0,0,0,0,0,1);
+  shade.addColorStop(0,ink(core));
+  shade.addColorStop(clearRadius,ink(core));
+  shade.addColorStop(clearRadius+(1-clearRadius)*.58,ink(core+(edge-core)*.70));
+  shade.addColorStop(1,ink(edge));
+  c.fillStyle=shade;c.fillRect(-1,-2,2,4);
+  c.restore();
+}
 const demoCam={yaw:0,bank:0,pitch:.043,x:550,z:95,alt:55};
 const demoBots=[
   {id:2,slot:1,bearing:.33,elev:.124,range:170,course:-.84,scale:1.18},
@@ -176,12 +191,8 @@ export class Display {
       drawMissileBurst(c,x,y,radius,t,fx.seed,this.reduce);
     }
     if(game.mode==='lost' && this.impact)this.drawImpact(v,chase?.jet);
-    if(game.mode==='live'&&game.gLoad>7&&!this.reduce){
-      const shade=c.createRadialGradient(v.cx,v.cy,v.h*.28,v.cx,v.cy,Math.max(v.w*.57,v.h*.73));
-      shade.addColorStop(0,'rgba(13,17,25,0)');shade.addColorStop(1,'rgba(13,17,25,'+Math.min(.52,(game.gLoad-7)*.09)+')');
-      c.fillStyle=shade;c.fillRect(0,0,v.w,v.h);
-    }
     c.restore();
+    if(game.mode==='live'||game.mode==='paused')drawLoadShade(c,v,game.visionShade);
   }
   jetShadow(game,cam,v){
     const clearance=Math.max(0,game.clearance);

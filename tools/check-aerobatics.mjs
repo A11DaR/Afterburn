@@ -3,6 +3,7 @@ import {Flight,viewFor,cameraFor,angleDiff} from '../dist/flight.js';
 import {cameraAxes,direction,dot,pointOnRay,project,TAU} from '../dist/geometry.js';
 import {chaseView} from '../dist/chase-camera.js';
 import {terrainBounds,traceTerrain} from '../dist/steep-terrain.js';
+import {nextVisionShade} from '../dist/aerodynamics.js';
 
 const view=viewFor(896,430),flat=()=>0;
 function aircraft(profile){
@@ -69,6 +70,34 @@ for(const profile of ['arcade','classic']){
 }
 const repeat=aircraft('arcade');let rolls=0;repeat.emit=type=>{if(type==='roll')rolls++;};
 fly(repeat,2.5,new Set(['KeyQ']));assert.ok(rolls>=3);
+
+function sustainG(gLoad,seconds,hz,initial=0){
+  let shade=initial;
+  for(let i=0;i<Math.round(seconds*hz);i++)shade=nextVisionShade(shade,gLoad,1/hz);
+  return shade;
+}
+assert.equal(sustainG(6,2,60),0);
+assert.equal(sustainG(-10,2,60),0);
+let lighter=0;
+for(const load of [6.1,7,8,9,10]){
+  const shade=sustainG(load,2,30);
+  assert.ok(shade>lighter);
+  assert.ok(Math.abs(shade-sustainG(load,2,120))<1e-10);
+  lighter=shade;
+}
+assert.ok(lighter>.99);
+assert.equal(sustainG(12,2,30),lighter);
+assert.ok(nextVisionShade(lighter,1,1/60)>.9);
+assert.equal(sustainG(1,4,30,lighter),0);
+for(const profile of ['arcade','classic']){
+  const turn=aircraft(profile);turn.speed=turn.throttle=600;
+  fly(turn,1,new Set(['KeyW','ShiftLeft']));
+  assert.ok(turn.mode==='live'&&turn.gLoad>6&&turn.visionShade>.1);
+  const during=turn.visionShade;turn.pause();fly(turn,1,new Set());
+  assert.equal(turn.visionShade,during);
+  turn.resume();fly(turn,4,new Set());assert.equal(turn.visionShade,0);
+  turn.start();assert.equal(turn.visionShade,0);
+}
 
 // Exact zenith and nadir are ordinary view directions, including behind the pilot.
 for(const pitch of [Math.PI/2,-Math.PI/2])for(const bank of [-2.2,0,2.6]){

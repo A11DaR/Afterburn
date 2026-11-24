@@ -1,6 +1,6 @@
 import {clamp,angleDiff,approach,project,relativeTo,recordTrail} from './geometry.js';
 import {newOpponent,flyOpponent,markIncoming,attackScore} from './opponents.js';
-import {advanceAirframe,WING_LIMIT} from './aerodynamics.js';
+import {advanceAirframe,nextVisionShade,WING_LIMIT} from './aerodynamics.js';
 import {MISSIONS} from './missions.js';
 import {arcadeAxes} from './pilot-assist.js';
 import {beginLesson,moveDrone,advanceLesson} from './flight-school.js';
@@ -48,7 +48,7 @@ export class Flight {
       lesson:null,roundsFired:0,gunHits:0,launches:0,missileHits:0,
       wave:0,kills:0,hull:100,rockets:this.mission.rockets,rounds:240,flares:this.mission.flares,time:0,waveTime:0,
       x:550,z:95,alt:this.missionId==='dogfight'?112:55,yaw:0,pitch:.025,bank:0,baseBank:0,yawRate:0,
-      pathPitch:.025,trackYaw:0,slip:0,separation:0,aileronRate:0,freeBank:false,thrust:17.65,gLoad:1,peakG:1,stalled:false,highG:false,wingStress:0,wingLoss:null,exit:null,
+      pathPitch:.025,trackYaw:0,slip:0,separation:0,aileronRate:0,freeBank:false,thrust:17.65,gLoad:1,peakG:1,visionShade:0,stalled:false,highG:false,wingStress:0,wingLoss:null,exit:null,
       speed:398,throttle:398,boost:false,braking:false,flapAngle:0,flapsExtended:false,
       lastHitSide:0,clearance:55,groundWarning:false,warningIn:0,
       lowAltitude:false,bankWarning:false,terrainTurn:0,leftMargin:Infinity,rightMargin:Infinity,
@@ -205,6 +205,7 @@ export class Flight {
   }
   fallWithoutWing(dt){
     const loss=this.wingLoss;loss.age+=dt;this.damageFlash=Math.max(0,this.damageFlash-dt*1.15);
+    this.visionShade=nextVisionShade(this.visionShade,0,dt);
     this.bank=angleDiff(this.bank+loss.side*(1.5+loss.age)*dt,0);
     this.pathPitch=Math.max(-1.14,this.pathPitch-(.51+loss.age*.16)*dt);
     this.pitch=approach(this.pitch,this.pathPitch-.12,2.4,dt);
