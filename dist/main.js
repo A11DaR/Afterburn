@@ -21,7 +21,7 @@ function setText(node,s){if(node.textContent!==String(s))node.textContent=String
 let display,loadError=false,noticeLife=0,lastFrame=performance.now(),readoutTimer=0;
 const game=new Flight(onEvent);
 // Optional fictional arcade easter egg; no real payments or external services.
-const SUPPORT_PRICE=100,SUPPORT_COOLDOWN=120,SUPPORT_DELAY=1.8;
+const SUPPORT_PRICE=100,SUPPORT_COOLDOWN=120,SUPPORT_DELAY=7;
 let supportCash=100,supportReady=0,supportRun=null;
 const supportBinding=document.createElement('div');
 supportBinding.className='binding';
@@ -32,7 +32,60 @@ keyButtons.set('KeyB',supportButton);
 const supportFlyby=document.createElement('div');
 supportFlyby.setAttribute('aria-hidden','true');
 supportFlyby.style.cssText='position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:4;display:none';
-supportFlyby.innerHTML='<div style="position:absolute;top:36%;left:0;width:clamp(65px,16%,130px);filter:drop-shadow(0 3px 2px #0008)"><svg viewBox="0 0 100 100" style="display:block;width:100%;height:auto" shape-rendering="crispEdges"><path fill="#84949c" stroke="#24343d" stroke-width="3" d="M50 3 59 22 61 35 92 65 89 73 63 66 65 80 77 90 64 94 50 86 36 94 23 90 35 80 37 66 11 73 8 65 39 35 41 22Z"/><path fill="#304b61" d="M50 15 57 31 50 43 43 31Z"/><path fill="#c5d3d8" d="M50 44 54 65 50 83 46 65Z"/><path fill="#ffae55" d="M45 88h10l-5 12Z"/></svg><div style="text-align:center;color:#c7e9ff;font:bold 10px monospace;white-space:nowrap;text-shadow:1px 1px #000">F-35I ADIR</div></div>';
+// Native 96×56 sprite: every visible edge is an integer pixel, with nearest-neighbor scaling.
+function supportSprite(){
+  const w=96,h=56,pixels=Array.from({length:h},()=>Array(w).fill(null));
+  const dot=(x,y,c)=>{if(x>=0&&x<w&&y>=0&&y<h)pixels[y][x]=c;};
+  const rect=(x,y,a,b,c)=>{for(let j=y;j<y+b;j++)for(let i=x;i<x+a;i++)dot(i,j,c);};
+  const poly=(points,c)=>{
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      let inside=false;
+      for(let i=0,j=points.length-1;i<points.length;j=i++){
+        const [a,b]=points[i],[d,e]=points[j];
+        if((b>y+.5)!==(e>y+.5)&&x+.5<(d-a)*(y+.5-b)/(e-b)+a)inside=!inside;
+      }
+      if(inside)dot(x,y,c);
+    }
+  };
+  const line=(x,y,x2,y2,c)=>{const n=Math.max(Math.abs(x2-x),Math.abs(y2-y));for(let k=0;k<=n;k++)dot(Math.round(x+(x2-x)*k/n),Math.round(y+(y2-y)*k/n),c);};
+  // Flag on a short mast, blue stripes and a six-pointed star.
+  rect(12,6,2,26,'#263747');rect(13,6,1,25,'#a6b6bd');
+  rect(14,5,25,17,'#182e43');rect(15,6,23,15,'#fffdf3');
+  rect(15,8,23,2,'#2455b9');rect(15,17,23,2,'#2455b9');
+  for(const t of [[[26,10],[22,16],[30,16],[26,10]],[[22,12],[30,12],[26,18],[22,12]]])
+    for(let i=1;i<t.length;i++)line(...t[i-1],...t[i],'#2455b9');
+  // Stepped F-35 side silhouette, twin tails, delta wing, inlet, exhaust.
+  poly([[8,34],[20,29],[18,18],[25,18],[36,29],[43,29],[49,24],[65,24],[74,28],[94,35],[94,38],[83,40],[70,40],[57,49],[39,49],[45,41],[23,41],[14,44],[5,40],[5,35]],'#1b2734');
+  poly([[8,35],[23,31],[20,20],[24,20],[35,31],[48,29],[52,26],[65,26],[73,30],[91,35],[93,37],[78,39],[61,39],[56,46],[43,47],[49,39],[25,39],[15,42],[7,39]],'#7e929c');
+  poly([[24,32],[41,32],[53,30],[69,30],[83,34],[90,36],[72,36],[62,35],[49,36],[31,36]],'#a9b8bb');
+  poly([[40,38],[65,35],[58,42],[54,46],[44,46],[51,40]],'#536a78');
+  poly([[36,33],[49,28],[51,31],[45,36],[37,36]],'#314653');
+  poly([[53,25],[66,25],[74,30],[57,31],[50,29]],'#263f58');
+  rect(56,28,11,2,'#88c4d5');rect(7,36,6,3,'#273540');
+  rect(1,36,6,3,'#e88740');rect(0,37,4,1,'#ffe0a0');
+  rect(81,36,5,1,'#dfebe3');rect(24,32,2,2,'#e6e9db');
+  // Caricature: silver swept hair, heavy brows, prominent nose, suit collar.
+  poly([[52,23],[55,20],[64,20],[70,24],[70,30],[53,30]],'#1d283c');
+  poly([[57,24],[61,24],[63,29],[60,31],[57,27]],'#f8f5e9');
+  rect(60,27,2,4,'#416ca4');
+  poly([[53,6],[56,3],[64,3],[68,5],[70,8],[70,15],[68,17],[67,23],[63,25],[57,24],[54,21],[53,17],[51,15],[51,10]],'#563c37');
+  poly([[54,8],[57,6],[65,6],[68,9],[68,15],[70,16],[68,18],[67,22],[63,24],[58,23],[55,20],[54,16]],'#e2b49a');
+  poly([[54,9],[53,6],[57,3],[64,3],[69,6],[70,10],[67,11],[65,8],[60,7],[57,9]],'#d6d9d6');
+  rect(55,5,9,1,'#f6f1df');rect(54,7,6,1,'#a5aeb0');rect(54,10,2,4,'#a4a5a3');
+  rect(56,12,4,1,'#735a53');rect(63,12,4,1,'#735a53');
+  rect(57,13,2,1,'#293d48');rect(64,13,2,1,'#293d48');
+  rect(62,14,2,4,'#c78e76');rect(63,17,3,1,'#a96f61');
+  rect(59,20,7,1,'#835447');rect(60,21,5,1,'#f3c5a6');
+  rect(56,18,1,3,'#c78e76');rect(61,23,3,1,'#b87d6b');
+  let svg='<svg viewBox="0 0 '+w+' '+h+'" style="display:block;width:100%;height:auto;image-rendering:pixelated" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">';
+  for(let y=0;y<h;y++)for(let x=0;x<w;){
+    const c=pixels[y][x];let end=x+1;while(end<w&&pixels[y][end]===c)end++;
+    if(c)svg+='<rect x="'+x+'" y="'+y+'" width="'+(end-x)+'" height="1" fill="'+c+'"/>';
+    x=end;
+  }
+  return svg+'</svg>';
+}
+supportFlyby.innerHTML='<div style="position:absolute;top:25%;left:-25%;width:clamp(130px,42%,290px);transform:translateX(-50%);filter:drop-shadow(2px 3px 0 #17243188)">'+supportSprite()+'<div style="text-align:center;color:#ecf8ff;font:bold clamp(10px,1.6vw,15px) monospace;letter-spacing:1px;white-space:nowrap;text-shadow:2px 2px #152232">BIBI · F-35I ADIR</div></div>';
 ui.viewport.append(supportFlyby);
 function resetSupport(){
   supportCash=100;supportReady=0;supportRun=null;supportFlyby.style.display='none';
@@ -56,7 +109,9 @@ function callSupport(){
   supportCash-=SUPPORT_PRICE;
   supportRun={target,at:game.time};
   supportReady=game.time+SUPPORT_COOLDOWN;
-  info('−100 ₸ · DIPLOMATIC SOLUTION INCOMING',2);
+  supportFlyby.firstElementChild.style.left='-25%';
+  supportFlyby.firstElementChild.style.transform='translate(-50%,0px)';
+  info('−100 ₸ · DIPLOMATIC SOLUTION INCOMING',3);
   radio.activate();
   [392,523.25,659.25,783.99,1046.5].forEach((hz,i)=>radio.tone(hz,.14,.035,i*.12,'square'));
   paintSupport();
@@ -69,8 +124,11 @@ function stepSupport(){
     info('F-35: вылет отменён · 100 ₸ возвращены',2);paintSupport();return;
   }
   const p=Math.max(0,Math.min(1,(game.time-at)/SUPPORT_DELAY));
-  supportFlyby.firstElementChild.style.left=(-22+p*125)+'%';
-  supportFlyby.firstElementChild.style.transform='translateY('+Math.round(Math.sin(p*Math.PI)*-35)+'px) rotate(65deg)';
+  // 1.4 seconds to arrive, 4.2 seconds in formation, 1.4 seconds to depart.
+  const ease=t=>t*t*(3-2*t);
+  const position=p<.2?-25+73*ease(p/.2):p<.8?48+7*((p-.2)/.6):55+70*ease((p-.8)/.2);
+  supportFlyby.firstElementChild.style.left=position+'%';
+  supportFlyby.firstElementChild.style.transform='translate(-50%,'+Math.round(Math.sin(p*8*Math.PI)*3)+'px)';
   if(p<1)return;
   supportRun=null;
   // Use the same destruction path and explosion as normal combat.
