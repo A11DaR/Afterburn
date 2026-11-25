@@ -1,5 +1,5 @@
 import {clamp,relativeTo,recordTrail} from './geometry.js';
-import {newOpponent} from './opponents.js';
+import {newOpponent} from './opponents.js?v=lock-1s-20261125';
 
 export const LESSONS=['Пролети через ворота','Захвати учебную цель','Уйди от учебной ракеты'];
 

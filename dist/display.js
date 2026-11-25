@@ -1,4 +1,4 @@
-import {viewFor,project,clamp,angleDiff,cameraFor,LOCK_SECONDS} from './flight.js';
+import {viewFor,project,clamp,angleDiff,cameraFor,LOCK_SECONDS} from './flight.js?v=lock-1s-20261125';
 import {Scenery} from './scenery.js';
 import {Coast} from './coast.js';
 import {WARNINGS,WARNING_UI} from './warnings.js';

@@ -1,9 +1,9 @@
 import {clamp,angleDiff,approach,project,relativeTo,recordTrail} from './geometry.js';
-import {newOpponent,flyOpponent,markIncoming,attackScore} from './opponents.js';
+import {newOpponent,flyOpponent,markIncoming,attackScore} from './opponents.js?v=lock-1s-20261125';
 import {advanceAirframe,nextVisionShade,WING_LIMIT} from './aerodynamics.js';
 import {MISSIONS} from './missions.js';
 import {arcadeAxes} from './pilot-assist.js';
-import {beginLesson,moveDrone,advanceLesson} from './flight-school.js';
+import {beginLesson,moveDrone,advanceLesson} from './flight-school.js?v=lock-1s-20261125';
 import {scanTerrain,advisedRoll} from './ground-awareness.js';
 export {clamp,angleDiff,project,viewFor,cameraFor,relativeTo} from './geometry.js';
 
@@ -264,7 +264,7 @@ export class Flight {
     if(!this.rockets){this.emit('denied');this.emit('info','Ракеты закончились · E — пулемёт');return false;}
     const b=this.inSight(v);
     if(!b || this.lockId!==b.id || this.lock<LOCK_SECONDS || this.terrainBetween(this,b)){
-      this.emit('denied');this.emit('info','Подведи цель к меткам и дождись захвата · 1 с');return false;
+      this.emit('denied');this.emit('info','Подведи цель к меткам и дождись захвата · '+LOCK_SECONDS+' с');return false;
     }
     this.rockets--;this.launches++;b.claimed=true;
     const side=this.rockets%2?1:-1, cs=Math.cos(this.yaw),sn=Math.sin(this.yaw);
