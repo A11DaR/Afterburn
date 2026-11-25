@@ -7,7 +7,8 @@ import {beginLesson,moveDrone,advanceLesson} from './flight-school.js';
 import {scanTerrain,advisedRoll} from './ground-awareness.js';
 export {clamp,angleDiff,project,viewFor,cameraFor,relativeTo} from './geometry.js';
 
-export const LOCK_SECONDS=1.5;
+export const LOCK_SECONDS=1;
+const PLAYER_MISSILE_SPEED=.8;
 export const WAVES=MISSIONS.intercept.stages;
 export const TOTAL=WAVES.reduce((sum,n)=>sum+n,0);
 export const ASSIST_RADIUS=2.53; // All three distances are measured in HUD ring radii.
@@ -263,12 +264,12 @@ export class Flight {
     if(!this.rockets){this.emit('denied');this.emit('info','Ракеты закончились · E — пулемёт');return false;}
     const b=this.inSight(v);
     if(!b || this.lockId!==b.id || this.lock<LOCK_SECONDS || this.terrainBetween(this,b)){
-      this.emit('denied');this.emit('info','Подведи цель к меткам и дождись захвата · 1,5 с');return false;
+      this.emit('denied');this.emit('info','Подведи цель к меткам и дождись захвата · 1 с');return false;
     }
     this.rockets--;this.launches++;b.claimed=true;
     const side=this.rockets%2?1:-1, cs=Math.cos(this.yaw),sn=Math.sin(this.yaw);
     this.missiles.push({target:b,x:this.x+side*5*cs+4*sn,z:this.z-side*5*sn+4*cs,alt:this.alt-2,
-      heading:this.yaw,pitch:this.pitch-.045,speed:178,age:0,life:4.6,free:false,history:[],sampleIn:0});
+      heading:this.yaw,pitch:this.pitch-.045,speed:178*PLAYER_MISSILE_SPEED,age:0,life:4.6,free:false,history:[],sampleIn:0});
     if(!b.training)markIncoming(this,b);
     this.resetLock();this.emit('missile',b);return true;
   }
@@ -312,8 +313,8 @@ export class Flight {
         const target=m.target,aim=relativeTo(target,m);
         if(aim.range<12){this.missileHits++;this.destroy(target,'missile');continue;}
         const yaw=angleDiff(aim.bearing,m.heading),up=aim.elev-m.pitch;
-        const crossing=target.state==='evade' && aim.range<83 && Math.abs(target.lastTurn)>.82
-          && Math.abs(angleDiff(target.heading,m.heading))>.91 && Math.abs(yaw)>.13;
+        const crossing=target.state==='evade' && aim.range<96 && Math.abs(target.lastTurn)>.70
+          && Math.abs(angleDiff(target.heading,m.heading))>.78 && Math.abs(yaw)>.11;
         if(m.age>.35 && (Math.abs(yaw)>1.52 || crossing) && this.bots.includes(target)){
           target.claimed=false;m.free=true;m.target=null;m.life=m.age+.8;this.emit('miss',target);
         }else{
@@ -321,7 +322,7 @@ export class Flight {
           m.heading+=clamp(yaw,-turn*dt,turn*dt);m.pitch+=clamp(up,-turn*dt,turn*dt);
         }
       }
-      m.speed=approach(m.speed,218,1.7,dt);moveMarker(m,dt);
+      m.speed=approach(m.speed,218*PLAYER_MISSILE_SPEED,1.7,dt);moveMarker(m,dt);
       if(m.alt<this.heightAt(m.x,m.z)+1) {
         if(m.target){m.target.claimed=false;this.emit('miss',m.target);}continue;
       }

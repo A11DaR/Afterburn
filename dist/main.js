@@ -258,7 +258,7 @@ function refreshReadouts(){
     setText(el('lesson-name'),LESSONS[lesson.stage]);
     const steer=game.profile==='classic'?'Веди самолёт клавишами WASD':coarse.matches?'Веди пальцем слева':'Веди самолёт мышью или WASD';
     const actions=[steer+' · ворота '+Math.min(2,lesson.passed+1)+'/2',
-      game.missiles.some(m=>m.target)?'Ракета в пути':game.lock>=LOCK_SECONDS?'Кольцо замкнулось · нажми R':game.lockId!==null?'Удерживай мишень в кольце 1,5 с':'Наведи ракетное кольцо на мишень',
+      game.missiles.some(m=>m.target)?'Ракета в пути':game.lock>=LOCK_SECONDS?'Кольцо замкнулось · нажми R':game.lockId!==null?'Удерживай мишень в кольце 1 с':'Наведи ракетное кольцо на мишень',
       game.threats.some(t=>!t.free)?'F — ловушки · Q — бочка по сигналу':'Приготовься к сигналу тревоги'];
     setText(el('lesson-action'),actions[lesson.stage]);
   }
@@ -362,7 +362,7 @@ function onEvent(type,data) {
     clearLampTest();clearKeys();clearNotice();screen();lastFrame=performance.now();
     if(type==='start'&&!game.lesson){
       const pilot=game.bots[0]?.pilot;
-      info(pilot?pilot.name+' · '+pilot.brief:game.missionId==='intercept'?'Золотая метка — ведущий. Сбей его до рубежа.':'Подведи кольцо к цели · 1,5 с до пуска',3.2);
+      info(pilot?pilot.name+' · '+pilot.brief:game.missionId==='intercept'?'Золотая метка — ведущий. Сбей его до рубежа.':'Подведи кольцо к цели · 1 с до пуска',3.2);
     }
     if(type==='lessonRetry')info('Этап начат заново',1.5);
     if(type==='pause'||type==='won'||type==='lost')ui.launch.focus({preventScroll:true});

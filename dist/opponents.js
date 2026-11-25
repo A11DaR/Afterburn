@@ -37,7 +37,7 @@ function changeState(b,state,timer,heading) {
 }
 export function markIncoming(game, b) {
   if (b.defenseWait>0) return;
-  b.reactAt=.56+game.random()*.38 + (b.slot===0 && game.wave===0 ? .48:0);
+  b.reactAt=.28+game.random()*.24 + (b.slot===0 && game.wave===0 ? .24:0);
   
 }
 function chooseState(game,b) {
@@ -62,8 +62,8 @@ export function flyOpponent(game,b,dt) {
     if (b.reactAt<=0) {
       b.reactAt=null;
       if (b.claimed) {
-        changeState(b,'evade',b.pilot?.breakTime??1.85,b.heading+b.side*1.65);
-        b.defenseWait=6;b.signal=1.15;
+        changeState(b,'evade',(b.pilot?.breakTime??1.85)+.55,b.heading+b.side*1.95);
+        b.defenseWait=3;b.signal=1.15;
         if(b.decoys>0) {
           b.decoys--;game.shedPursuer(b);game.emit('botFlare',b);
         }
@@ -91,7 +91,7 @@ export function flyOpponent(game,b,dt) {
   }else if(b.state==='extend'){
     targetAlt=Math.max(game.alt+16,b.alt+3);speed=70;turn=.78;
   }else if(b.state==='evade'){
-    targetAlt=b.alt+20*b.side;speed=76;turn=1.85;
+    targetAlt=b.alt+20*b.side;speed=76;turn=2.05;
   }else{
     speed=b.slot===0?38:51;desired=b.goalHeading+Math.sin(game.waveTime*.4+b.phase)*.012;
   }
