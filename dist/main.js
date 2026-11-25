@@ -20,6 +20,67 @@ function clock(s){return Math.floor(s/60)+':'+pad(Math.floor(s%60));}
 function setText(node,s){if(node.textContent!==String(s))node.textContent=String(s);}
 let display,loadError=false,noticeLife=0,lastFrame=performance.now(),readoutTimer=0;
 const game=new Flight(onEvent);
+// Optional fictional arcade easter egg; no real payments or external services.
+const SUPPORT_PRICE=100,SUPPORT_COOLDOWN=120,SUPPORT_DELAY=1.8;
+let supportCash=100,supportReady=0,supportRun=null;
+const supportBinding=document.createElement('div');
+supportBinding.className='binding';
+supportBinding.innerHTML='<button type="button" data-code="KeyB" aria-label="Вызвать F-35 за 100 виртуальных тенге" title="B — шуточная поддержка F-35">B</button><span>F-35 · 100 ₸</span>';
+keyButtons.get('KeyF').parentElement.after(supportBinding);
+const supportButton=supportBinding.querySelector('button'),supportLabel=supportBinding.querySelector('span');
+keyButtons.set('KeyB',supportButton);
+const supportFlyby=document.createElement('div');
+supportFlyby.setAttribute('aria-hidden','true');
+supportFlyby.style.cssText='position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:4;display:none';
+supportFlyby.innerHTML='<div style="position:absolute;top:36%;left:0;width:clamp(65px,16%,130px);filter:drop-shadow(0 3px 2px #0008)"><svg viewBox="0 0 100 100" style="display:block;width:100%;height:auto" shape-rendering="crispEdges"><path fill="#84949c" stroke="#24343d" stroke-width="3" d="M50 3 59 22 61 35 92 65 89 73 63 66 65 80 77 90 64 94 50 86 36 94 23 90 35 80 37 66 11 73 8 65 39 35 41 22Z"/><path fill="#304b61" d="M50 15 57 31 50 43 43 31Z"/><path fill="#c5d3d8" d="M50 44 54 65 50 83 46 65Z"/><path fill="#ffae55" d="M45 88h10l-5 12Z"/></svg><div style="text-align:center;color:#c7e9ff;font:bold 10px monospace;white-space:nowrap;text-shadow:1px 1px #000">F-35I ADIR</div></div>';
+ui.viewport.append(supportFlyby);
+function resetSupport(){
+  supportCash=100;supportReady=0;supportRun=null;supportFlyby.style.display='none';
+}
+function paintSupport(){
+  const live=game.mode==='live'&&!game.lesson;
+  supportBinding.hidden=!live;
+  supportBinding.style.display=live?'':'none';
+  const remaining=Math.max(0,Math.ceil(supportReady-game.time));
+  supportButton.disabled=!live||!!supportRun||!!game.wingLoss||!game.bots.length||remaining>0||supportCash<SUPPORT_PRICE;
+  setText(supportLabel,supportRun?'F-35 · в пути':remaining?'F-35 · '+remaining+' с':'F-35 · 100 ₸');
+  supportButton.title='B — F-35, баланс: '+supportCash+' виртуальных ₸'+(remaining?' · ожидание '+remaining+' с':'');
+  supportButton.setAttribute('aria-label',supportButton.title);
+  supportFlyby.style.display=live&&supportRun?'block':'none';
+}
+function callSupport(){
+  if(game.mode!=='live'||game.lesson||game.wingLoss||supportRun||game.time<supportReady||supportCash<SUPPORT_PRICE)return;
+  const candidates=game.bots.filter(b=>!b.claimed);
+  if(!candidates.length){info('F-35: нет свободной цели',1.5);return;}
+  const target=candidates.find(b=>b.id===game.lockId)??candidates.reduce((a,b)=>a.range<=b.range?a:b);
+  supportCash-=SUPPORT_PRICE;
+  supportRun={target,at:game.time};
+  supportReady=game.time+SUPPORT_COOLDOWN;
+  info('−100 ₸ · DIPLOMATIC SOLUTION INCOMING',2);
+  radio.activate();
+  [392,523.25,659.25,783.99,1046.5].forEach((hz,i)=>radio.tone(hz,.14,.035,i*.12,'square'));
+  paintSupport();
+}
+function stepSupport(){
+  if(!supportRun||game.mode!=='live'||game.lesson)return;
+  const {target,at}=supportRun;
+  if(game.wingLoss||!game.bots.includes(target)){
+    supportCash+=SUPPORT_PRICE;supportReady=0;supportRun=null;
+    info('F-35: вылет отменён · 100 ₸ возвращены',2);paintSupport();return;
+  }
+  const p=Math.max(0,Math.min(1,(game.time-at)/SUPPORT_DELAY));
+  supportFlyby.firstElementChild.style.left=(-22+p*125)+'%';
+  supportFlyby.firstElementChild.style.transform='translateY('+Math.round(Math.sin(p*Math.PI)*-35)+'px) rotate(65deg)';
+  if(p<1)return;
+  supportRun=null;
+  // Use the same destruction path and explosion as normal combat.
+  // Detach any player's missile newly assigned to this target, without crediting a missile hit.
+  for(const m of game.missiles)if(m.target===target){m.target=null;m.free=true;m.life=Math.min(m.life,m.age+.8);}
+  game.destroy(target,'support');
+  info('БИБИ: ЦЕЛЬ СБИТА · 100 ₸ ОТРАБОТАНЫ',3);
+  paintSupport();
+}
+
 const coarse=window.matchMedia('(pointer:coarse)');
 const profileOptions=el('profiles'),profiles=[...profileOptions.querySelectorAll('input')];
 try{game.setProfile(localStorage.getItem('afterburn-controls')??'arcade');}catch{}
@@ -157,6 +218,7 @@ function updateEnginePanel(live,lang){
 }
 function refreshReadouts(){
   paintWarnings();
+  paintSupport();
   const lang=radio.language,words=WARNING_UI[lang],live=game.mode==='live';
   updateEnginePanel(live,lang);
   const lesson=game.lesson;
@@ -272,6 +334,8 @@ function screen(){
   refreshReadouts();
 }
 function onEvent(type,data) {
+  if(['start','briefing','lessonRetry'].includes(type))resetSupport();
+  if(type==='kill'&&!game.lesson&&data?.weapon!=='support')supportCash+=25;
   display?.event(type,data);radio.event(type,data);
   if(['briefing','start','pause','resume','won','lost','lessonRetry'].includes(type)){
     clearLampTest();clearKeys();clearNotice();screen();lastFrame=performance.now();
@@ -336,6 +400,7 @@ function press(code){
   if(code==='KeyR')game.missile(display.v);
   else if(code==='KeyE')game.gun(display.v);
   else if(code==='KeyF')game.deployFlares();
+  else if(code==='KeyB')callSupport();
 }
 function release(code){
   keys.delete(code);if(code==='KeyC')game.setRear(false);
@@ -406,6 +471,7 @@ function frame(now){
     if(game.mode==='live'){
       const n=Math.max(1,Math.ceil(dt*60));
       for(let k=0;k<n;k++)game.step(dt/n,keys,display.v);
+      stepSupport();
     }
     if(noticeLife>0){noticeLife-=dt;if(noticeLife<=0)clearNotice();}
     readoutTimer-=dt;if(readoutTimer<=0){refreshReadouts();readoutTimer=.09;if(game.mode==='live')radio.engineSpeed(game);}
@@ -426,4 +492,5 @@ async function init(){
     setText(ui.brief,'Не удалось загрузить сцену. Попробуй ещё раз.');ui.launch.disabled=false;
   }
 }
+paintSupport();
 init();
