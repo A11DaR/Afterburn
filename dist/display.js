@@ -149,6 +149,7 @@ export class Display {
     if(game.lesson?.gate&&!game.rear)drawLessonGate(c,v,cam,game.lesson.gate);
     const ordered=[...bots].sort((a,b)=>b.range-a.range);
     for(const b of ordered)this.drawBandit(b,cam,game,v,menu);
+    if(!menu&&game.supportJet)this.drawSupportJet(game.supportJet,cam,game,v);
     if(!menu){
       this.drawProjectiles(game,cam,v);this.drawEffects(game,cam,v,chase);
       if(!this.reduce)this.airflow(game,v);
@@ -236,6 +237,41 @@ export class Display {
       }
       c.restore();
     }
+  }
+  drawSupportJet(jet,cam,game,v){
+    const c=this.c,p=project(jet,cam,v);
+    if(jet.fire){
+      const hit=project(jet.fire,cam,v),t=jet.fire.progress;
+      if(p.visible&&hit.visible){
+        const from=[p.x+(hit.x-p.x)*Math.max(0,t-.24),p.y+(hit.y-p.y)*Math.max(0,t-.24)];
+        const to=[p.x+(hit.x-p.x)*t,p.y+(hit.y-p.y)*t];
+        path(c,[from,to],'#ffe19c',2);path(c,[from,to],'#fff9db',1);
+      }
+    }
+    if(!p.visible||p.depth<2||game.terrainBetween(cam,jet))return;
+    const span=clamp(v.f*12.62/p.depth,4,Math.min(v.w*.75,v.h*.8));
+    if(p.x<-span||p.x>v.w+span||p.y<-span||p.y>v.h+span)return;
+    const bearing=Math.atan2(jet.x-cam.x,jet.z-cam.z),elev=Math.atan2(jet.alt-cam.alt,Math.hypot(jet.x-cam.x,jet.z-cam.z));
+    const aspect=angleDiff(jet.heading,bearing),rear=Math.cos(aspect)<0;
+    // Reuse the player's depth-tested 3D pixel airframe, with the ally's own world attitude.
+    drawChaseJet(c,{x:p.x,y:p.y,span,bank:jet.bank*Math.cos(aspect)-cam.bank,
+      attitude:clamp(jet.pitch-elev-.49,-1.2,1.2),slip:rear?angleDiff(aspect,Math.PI):aspect,rear,
+      boost:true,speed:650,throttle:650,time:this.clock,reduced:this.reduce});
+    if(span>24){
+      // Pixel portrait and Israeli flag, anchored at the aircraft's cockpit in world coordinates.
+      const hx=jet.x+Math.sin(jet.heading)*4,hz=jet.z+Math.cos(jet.heading)*4;
+      const a=project({x:hx,z:hz,alt:jet.alt+2.1},cam,v);
+      if(a.visible){
+        const u=clamp(Math.round(span/36),1,4),x=Math.round(a.x-3*u),y=Math.round(a.y-8*u);
+        const box=(i,j,w,h,col)=>rect(c,x+i*u,y+j*u,w*u,h*u,col);
+        box(1,0,5,1,'#d8dbd8');box(0,1,7,2,'#a9afad');box(1,2,5,5,'#dfb499');
+        box(1,3,2,1,'#39454c');box(4,3,2,1,'#39454c');box(3,4,2,2,'#bd896f');
+        box(2,6,4,1,'#875b50');box(1,7,5,2,'#263a50');box(3,7,1,2,'#e7e8db');
+        box(8,0,1,9,'#c1c7c6');box(9,0,10,7,'#f5f7f0');box(9,1,10,1,'#2455b9');box(9,5,10,1,'#2455b9');
+        for(const [i,j] of [[14,2],[13,3],[15,3],[12,4],[13,4],[14,4],[15,4],[16,4]])box(i,j,1,1,'#2455b9');
+      }
+    }
+    if(span>8)label(c,'BIBI · ALLY',p.x,p.y+span*.48+7,'#b8eaff',clamp(span*.11,7,11));
   }
   drawBandit(b,cam,game,v,demo){
     const c=this.c,p=project(b,cam,v);

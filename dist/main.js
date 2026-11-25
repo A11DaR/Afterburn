@@ -21,96 +21,40 @@ function setText(node,s){if(node.textContent!==String(s))node.textContent=String
 let display,loadError=false,noticeLife=0,lastFrame=performance.now(),readoutTimer=0;
 const game=new Flight(onEvent);
 // Optional fictional arcade easter egg; no real payments or external services.
-const SUPPORT_PRICE=100,SUPPORT_COOLDOWN=120,SUPPORT_DELAY=7;
+const SUPPORT_PRICE=100,SUPPORT_COOLDOWN=120,SUPPORT_ATTACK=5.4,SUPPORT_DURATION=7;
 let supportCash=100,supportReady=0,supportRun=null;
 const supportBinding=document.createElement('div');
 supportBinding.className='binding';
-supportBinding.innerHTML='<button type="button" data-code="KeyB" aria-label="Вызвать F-35 за 100 виртуальных тенге" title="B — шуточная поддержка F-35">B</button><span>F-35 · 100 ₸</span>';
+supportBinding.innerHTML='<button type="button" data-code="KeyB" aria-label="Вызвать поддержку за 100 виртуальных тенге" title="B — шуточная воздушная поддержка">B</button><span>F-35 · 100 ₸</span>';
 keyButtons.get('KeyF').parentElement.after(supportBinding);
 const supportButton=supportBinding.querySelector('button'),supportLabel=supportBinding.querySelector('span');
 keyButtons.set('KeyB',supportButton);
-const supportFlyby=document.createElement('div');
-supportFlyby.setAttribute('aria-hidden','true');
-supportFlyby.style.cssText='position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:4;display:none';
-// Native 96×56 sprite: every visible edge is an integer pixel, with nearest-neighbor scaling.
-function supportSprite(){
-  const w=96,h=56,pixels=Array.from({length:h},()=>Array(w).fill(null));
-  const dot=(x,y,c)=>{if(x>=0&&x<w&&y>=0&&y<h)pixels[y][x]=c;};
-  const rect=(x,y,a,b,c)=>{for(let j=y;j<y+b;j++)for(let i=x;i<x+a;i++)dot(i,j,c);};
-  const poly=(points,c)=>{
-    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-      let inside=false;
-      for(let i=0,j=points.length-1;i<points.length;j=i++){
-        const [a,b]=points[i],[d,e]=points[j];
-        if((b>y+.5)!==(e>y+.5)&&x+.5<(d-a)*(y+.5-b)/(e-b)+a)inside=!inside;
-      }
-      if(inside)dot(x,y,c);
-    }
-  };
-  const line=(x,y,x2,y2,c)=>{const n=Math.max(Math.abs(x2-x),Math.abs(y2-y));for(let k=0;k<=n;k++)dot(Math.round(x+(x2-x)*k/n),Math.round(y+(y2-y)*k/n),c);};
-  // Flag on a short mast, blue stripes and a six-pointed star.
-  rect(12,6,2,26,'#263747');rect(13,6,1,25,'#a6b6bd');
-  rect(14,5,25,17,'#182e43');rect(15,6,23,15,'#fffdf3');
-  rect(15,8,23,2,'#2455b9');rect(15,17,23,2,'#2455b9');
-  for(const t of [[[26,10],[22,16],[30,16],[26,10]],[[22,12],[30,12],[26,18],[22,12]]])
-    for(let i=1;i<t.length;i++)line(...t[i-1],...t[i],'#2455b9');
-  // Stepped F-35 side silhouette, twin tails, delta wing, inlet, exhaust.
-  poly([[8,34],[20,29],[18,18],[25,18],[36,29],[43,29],[49,24],[65,24],[74,28],[94,35],[94,38],[83,40],[70,40],[57,49],[39,49],[45,41],[23,41],[14,44],[5,40],[5,35]],'#1b2734');
-  poly([[8,35],[23,31],[20,20],[24,20],[35,31],[48,29],[52,26],[65,26],[73,30],[91,35],[93,37],[78,39],[61,39],[56,46],[43,47],[49,39],[25,39],[15,42],[7,39]],'#7e929c');
-  poly([[24,32],[41,32],[53,30],[69,30],[83,34],[90,36],[72,36],[62,35],[49,36],[31,36]],'#a9b8bb');
-  poly([[40,38],[65,35],[58,42],[54,46],[44,46],[51,40]],'#536a78');
-  poly([[36,33],[49,28],[51,31],[45,36],[37,36]],'#314653');
-  poly([[53,25],[66,25],[74,30],[57,31],[50,29]],'#263f58');
-  rect(56,28,11,2,'#88c4d5');rect(7,36,6,3,'#273540');
-  rect(1,36,6,3,'#e88740');rect(0,37,4,1,'#ffe0a0');
-  rect(81,36,5,1,'#dfebe3');rect(24,32,2,2,'#e6e9db');
-  // Caricature: silver swept hair, heavy brows, prominent nose, suit collar.
-  poly([[52,23],[55,20],[64,20],[70,24],[70,30],[53,30]],'#1d283c');
-  poly([[57,24],[61,24],[63,29],[60,31],[57,27]],'#f8f5e9');
-  rect(60,27,2,4,'#416ca4');
-  poly([[53,6],[56,3],[64,3],[68,5],[70,8],[70,15],[68,17],[67,23],[63,25],[57,24],[54,21],[53,17],[51,15],[51,10]],'#563c37');
-  poly([[54,8],[57,6],[65,6],[68,9],[68,15],[70,16],[68,18],[67,22],[63,24],[58,23],[55,20],[54,16]],'#e2b49a');
-  poly([[54,9],[53,6],[57,3],[64,3],[69,6],[70,10],[67,11],[65,8],[60,7],[57,9]],'#d6d9d6');
-  rect(55,5,9,1,'#f6f1df');rect(54,7,6,1,'#a5aeb0');rect(54,10,2,4,'#a4a5a3');
-  rect(56,12,4,1,'#735a53');rect(63,12,4,1,'#735a53');
-  rect(57,13,2,1,'#293d48');rect(64,13,2,1,'#293d48');
-  rect(62,14,2,4,'#c78e76');rect(63,17,3,1,'#a96f61');
-  rect(59,20,7,1,'#835447');rect(60,21,5,1,'#f3c5a6');
-  rect(56,18,1,3,'#c78e76');rect(61,23,3,1,'#b87d6b');
-  let svg='<svg viewBox="0 0 '+w+' '+h+'" style="display:block;width:100%;height:auto;image-rendering:pixelated" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">';
-  for(let y=0;y<h;y++)for(let x=0;x<w;){
-    const c=pixels[y][x];let end=x+1;while(end<w&&pixels[y][end]===c)end++;
-    if(c)svg+='<rect x="'+x+'" y="'+y+'" width="'+(end-x)+'" height="1" fill="'+c+'"/>';
-    x=end;
-  }
-  return svg+'</svg>';
-}
-supportFlyby.innerHTML='<div style="position:absolute;top:25%;left:-25%;width:clamp(130px,42%,290px);transform:translateX(-50%);filter:drop-shadow(2px 3px 0 #17243188)">'+supportSprite()+'<div style="text-align:center;color:#ecf8ff;font:bold clamp(10px,1.6vw,15px) monospace;letter-spacing:1px;white-space:nowrap;text-shadow:2px 2px #152232">BIBI · F-35I ADIR</div></div>';
-ui.viewport.append(supportFlyby);
 function resetSupport(){
-  supportCash=100;supportReady=0;supportRun=null;supportFlyby.style.display='none';
+  supportCash=100;supportReady=0;supportRun=null;game.supportJet=null;
 }
 function paintSupport(){
   const live=game.mode==='live'&&!game.lesson;
-  supportBinding.hidden=!live;
-  supportBinding.style.display=live?'':'none';
+  supportBinding.hidden=!live;supportBinding.style.display=live?'':'none';
   const remaining=Math.max(0,Math.ceil(supportReady-game.time));
   supportButton.disabled=!live||!!supportRun||!!game.wingLoss||!game.bots.length||remaining>0||supportCash<SUPPORT_PRICE;
-  setText(supportLabel,supportRun?'F-35 · в пути':remaining?'F-35 · '+remaining+' с':'F-35 · 100 ₸');
+  setText(supportLabel,supportRun?(supportRun.hit?'F-35 · отход':'F-35 · в пути'):remaining?'F-35 · '+remaining+' с':'F-35 · 100 ₸');
   supportButton.title='B — F-35, баланс: '+supportCash+' виртуальных ₸'+(remaining?' · ожидание '+remaining+' с':'');
   supportButton.setAttribute('aria-label',supportButton.title);
-  supportFlyby.style.display=live&&supportRun?'block':'none';
 }
 function callSupport(){
   if(game.mode!=='live'||game.lesson||game.wingLoss||supportRun||game.time<supportReady||supportCash<SUPPORT_PRICE)return;
   const candidates=game.bots.filter(b=>!b.claimed);
   if(!candidates.length){info('F-35: нет свободной цели',1.5);return;}
   const target=candidates.find(b=>b.id===game.lockId)??candidates.reduce((a,b)=>a.range<=b.range?a:b);
-  supportCash-=SUPPORT_PRICE;
-  supportRun={target,at:game.time};
-  supportReady=game.time+SUPPORT_COOLDOWN;
-  supportFlyby.firstElementChild.style.left='-25%';
-  supportFlyby.firstElementChild.style.transform='translate(-50%,0px)';
+  supportCash-=SUPPORT_PRICE;supportReady=game.time+SUPPORT_COOLDOWN;
+  const yaw=game.yaw,cp=Math.cos(game.pitch),sp=Math.sin(game.pitch);
+  const forward={x:Math.sin(yaw)*cp,z:Math.cos(yaw)*cp,alt:sp};
+  const right={x:Math.cos(yaw),z:-Math.sin(yaw)};
+  const jet={x:game.x-forward.x*43+right.x*13,z:game.z-forward.z*43+right.z*13,
+    alt:game.alt-forward.alt*43+6,heading:yaw,pitch:game.pitch,bank:0,fire:null};
+  jet.alt=Math.max(jet.alt,game.heightAt(jet.x,jet.z)+8);
+  game.supportJet=jet;
+  supportRun={target,at:game.time,last:game.time,forward,hit:false};
   info('−100 ₸ · DIPLOMATIC SOLUTION INCOMING',3);
   radio.activate();
   [392,523.25,659.25,783.99,1046.5].forEach((hz,i)=>radio.tone(hz,.14,.035,i*.12,'square'));
@@ -118,27 +62,45 @@ function callSupport(){
 }
 function stepSupport(){
   if(!supportRun||game.mode!=='live'||game.lesson)return;
-  const {target,at}=supportRun;
-  if(game.wingLoss||!game.bots.includes(target)){
-    supportCash+=SUPPORT_PRICE;supportReady=0;supportRun=null;
-    info('F-35: вылет отменён · 100 ₸ возвращены',2);paintSupport();return;
+  const run=supportRun,jet=game.supportJet,target=run.target;
+  if(game.wingLoss||(!run.hit&&!game.bots.includes(target))){
+    if(!run.hit){supportCash+=SUPPORT_PRICE;supportReady=0;info('F-35: вылет отменён · 100 ₸ возвращены',2);}
+    supportRun=null;game.supportJet=null;paintSupport();return;
   }
-  const p=Math.max(0,Math.min(1,(game.time-at)/SUPPORT_DELAY));
-  // 1.4 seconds to arrive, 4.2 seconds in formation, 1.4 seconds to depart.
-  const ease=t=>t*t*(3-2*t);
-  const position=p<.2?-25+73*ease(p/.2):p<.8?48+7*((p-.2)/.6):55+70*ease((p-.8)/.2);
-  supportFlyby.firstElementChild.style.left=position+'%';
-  supportFlyby.firstElementChild.style.transform='translate(-50%,'+Math.round(Math.sin(p*8*Math.PI)*3)+'px)';
-  if(p<1)return;
-  supportRun=null;
-  // Use the same destruction path and explosion as normal combat.
-  // Detach any player's missile newly assigned to this target, without crediting a missile hit.
-  for(const m of game.missiles)if(m.target===target){m.target=null;m.free=true;m.life=Math.min(m.life,m.age+.8);}
-  game.destroy(target,'support');
-  info('БИБИ: ЦЕЛЬ СБИТА · 100 ₸ ОТРАБОТАНЫ',3);
-  paintSupport();
+  const age=game.time-run.at,dt=Math.max(0,game.time-run.last);run.last=game.time;
+  const prev={x:jet.x,z:jet.z,alt:jet.alt};
+  if(age<1.65){
+    // Fly through a world-space position just beside the player's original flight path.
+    const velocity=game.speed/9+37;
+    jet.x+=run.forward.x*velocity*dt;jet.z+=run.forward.z*velocity*dt;jet.alt+=run.forward.alt*velocity*dt;
+  }else if(!run.hit){
+    // Cinematic arcade chase: move toward a point behind the moving target, not a screen overlay.
+    const dx=target.x-jet.x,dz=target.z-jet.z,dy=target.alt-jet.alt;
+    const distance=Math.hypot(dx,dz,dy)||1,remaining=Math.max(.12,SUPPORT_ATTACK-age);
+    const advance=Math.min(Math.max(0,distance-24),Math.max(35,(distance-24)/remaining)*dt);
+    jet.x+=dx/distance*advance;jet.z+=dz/distance*advance;jet.alt+=dy/distance*advance;
+    if(age>=SUPPORT_ATTACK-.32)jet.fire={x:target.x,z:target.z,alt:target.alt,progress:Math.min(1,(age-SUPPORT_ATTACK+.32)/.32)};
+  }else{
+    const velocity=110;
+    jet.x+=Math.sin(jet.heading)*Math.cos(jet.pitch)*velocity*dt;
+    jet.z+=Math.cos(jet.heading)*Math.cos(jet.pitch)*velocity*dt;
+    jet.alt+=Math.max(.12,Math.sin(jet.pitch))*velocity*dt;
+  }
+  jet.alt=Math.max(jet.alt,game.heightAt(jet.x,jet.z)+8);
+  const dx=jet.x-prev.x,dz=jet.z-prev.z,dy=jet.alt-prev.alt;
+  if(Math.hypot(dx,dz,dy)>.01){
+    const heading=Math.atan2(dx,dz),turn=Math.atan2(Math.sin(heading-jet.heading),Math.cos(heading-jet.heading));
+    jet.bank+=(Math.max(-.65,Math.min(.65,turn*4))-jet.bank)*Math.min(1,dt*5);
+    jet.heading=heading;jet.pitch=Math.atan2(dy,Math.hypot(dx,dz));
+  }
+  if(!run.hit&&age>=SUPPORT_ATTACK){
+    run.hit=true;jet.fire=null;
+    for(const m of game.missiles)if(m.target===target){m.target=null;m.free=true;m.life=Math.min(m.life,m.age+.8);}
+    game.destroy(target,'support');
+    info('БИБИ: ЦЕЛЬ СБИТА · 100 ₸ ОТРАБОТАНЫ',3);paintSupport();
+  }
+  if(age>=SUPPORT_DURATION){supportRun=null;game.supportJet=null;paintSupport();}
 }
-
 const coarse=window.matchMedia('(pointer:coarse)');
 const profileOptions=el('profiles'),profiles=[...profileOptions.querySelectorAll('input')];
 try{game.setProfile(localStorage.getItem('afterburn-controls')??'arcade');}catch{}
@@ -393,6 +355,7 @@ function screen(){
 }
 function onEvent(type,data) {
   if(['start','briefing','lessonRetry'].includes(type))resetSupport();
+  if(type==='won'||type==='lost'){supportRun=null;game.supportJet=null;}
   if(type==='kill'&&!game.lesson&&data?.weapon!=='support')supportCash+=25;
   display?.event(type,data);radio.event(type,data);
   if(['briefing','start','pause','resume','won','lost','lessonRetry'].includes(type)){
@@ -528,8 +491,7 @@ function frame(now){
   if(!document.hidden && display){
     if(game.mode==='live'){
       const n=Math.max(1,Math.ceil(dt*60));
-      for(let k=0;k<n;k++)game.step(dt/n,keys,display.v);
-      stepSupport();
+      for(let k=0;k<n;k++){game.step(dt/n,keys,display.v);stepSupport();}
     }
     if(noticeLife>0){noticeLife-=dt;if(noticeLife<=0)clearNotice();}
     readoutTimer-=dt;if(readoutTimer<=0){refreshReadouts();readoutTimer=.09;if(game.mode==='live')radio.engineSpeed(game);}
