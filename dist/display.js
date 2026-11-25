@@ -6,6 +6,7 @@ import {drawWingBreak} from './flight-art.js';
 import {WING_LIMIT} from './aerodynamics.js';
 import {chaseView,chaseSight} from './chase-camera.js';
 import {drawChaseJet} from './chase-jet.js';
+import {drawSupportF35} from './support-f35.js';
 import {drawGunPipper,drawSeeker,drawLessonGate,drawPilotCursor} from './pilot-hud.js';
 import {drawMissileBurst,drawCanopyDamage} from './impact-art.js';
 
@@ -249,12 +250,12 @@ export class Display {
       }
     }
     if(!p.visible||p.depth<2||game.terrainBetween(cam,jet))return;
-    const span=clamp(v.f*12.62/p.depth,4,Math.min(v.w*.75,v.h*.8));
+    const span=clamp(v.f*10.56/p.depth,4,Math.min(v.w*.75,v.h*.8));
     if(p.x<-span||p.x>v.w+span||p.y<-span||p.y>v.h+span)return;
     const bearing=Math.atan2(jet.x-cam.x,jet.z-cam.z),elev=Math.atan2(jet.alt-cam.alt,Math.hypot(jet.x-cam.x,jet.z-cam.z));
     const aspect=angleDiff(jet.heading,bearing),rear=Math.cos(aspect)<0;
-    // Reuse the player's depth-tested 3D pixel airframe, with the ally's own world attitude.
-    drawChaseJet(c,{x:p.x,y:p.y,span,bank:jet.bank*Math.cos(aspect)-cam.bank,
+    // Independent depth-tested F-35I mesh; same pixel shading as the player's Hornet.
+    drawSupportF35(c,{x:p.x,y:p.y,span,bank:jet.bank*Math.cos(aspect)-cam.bank,
       attitude:clamp(jet.pitch-elev-.49,-1.2,1.2),slip:rear?angleDiff(aspect,Math.PI):aspect,rear,
       boost:true,speed:650,throttle:650,time:this.clock,reduced:this.reduce});
     if(span>24){
