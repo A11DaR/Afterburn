@@ -1,13 +1,13 @@
 import {clamp,angleDiff,approach,project,relativeTo,recordTrail} from './geometry.js';
-import {newOpponent,flyOpponent,markIncoming,attackScore} from './opponents.js?v=lock-1s-20261125';
+import {newOpponent,flyOpponent,markIncoming,attackScore} from './opponents.js?v=lock-05s-20261125';
 import {advanceAirframe,nextVisionShade,WING_LIMIT} from './aerodynamics.js';
 import {MISSIONS} from './missions.js';
 import {arcadeAxes} from './pilot-assist.js';
-import {beginLesson,moveDrone,advanceLesson} from './flight-school.js?v=lock-1s-20261125';
+import {beginLesson,moveDrone,advanceLesson} from './flight-school.js?v=lock-05s-20261125';
 import {scanTerrain,advisedRoll} from './ground-awareness.js';
 export {clamp,angleDiff,project,viewFor,cameraFor,relativeTo} from './geometry.js';
 
-export const LOCK_SECONDS=1;
+export const LOCK_SECONDS=.5;
 const PLAYER_MISSILE_SPEED=.8;
 export const WAVES=MISSIONS.intercept.stages;
 export const TOTAL=WAVES.reduce((sum,n)=>sum+n,0);
